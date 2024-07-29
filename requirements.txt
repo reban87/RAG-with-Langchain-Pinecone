@@ -1,0 +1,6 @@
+python-dotenv
+openai
+PyPDF2
+sentence_transformers
+langchain-huggingface
+langchain-openai
