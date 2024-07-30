@@ -1,7 +1,7 @@
 import openai
 
 
-openai.api_key = "sk-proj-RzleBYai8C0kEWAzfpYTT3BlbkFJqK6ANK6SfW8xFW6w2Tjd"
+openai.api_key = ""
 
 
 def chatbot(prompt, model="gpt-3.5-turbo"):
