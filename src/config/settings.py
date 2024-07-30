@@ -7,7 +7,6 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
-PINECONE_DIMENSION = os.getenv("PINECONE_DIMENSION")
 
 
 # @ OPENAI SETTINGS
@@ -22,3 +21,7 @@ EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 # @ DATA SETTINGS
 Base_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DATA_DIR = os.path.join(Base_DIR, "data", "tmp")
+
+
+# @ LANGSMITH API KEY
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")

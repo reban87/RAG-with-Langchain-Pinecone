@@ -9,13 +9,12 @@ from langsmith import traceable
 from src.config.settings import (
     OPENAI_API_KEY,
     PINECONE_API_KEY,
-    PINECONE_DIMENSION,
     PINECONE_INDEX_NAME,
     EMBEDDING_MODEL,
     TEMPERATURE,
     MODEL_NAME,
 )
-from src.storage.pinecne_utils import init_pinecone
+from src.storage.pinecone_utils import init_pinecone, get_or_create_index
 
 # @ INITIATE THE OPENAI CLIENT
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -32,7 +31,7 @@ def retriever(query: str):
 
 
 class RagEngine:
-    def __init__(self) -> None:
+    def __init__(self):
         pc = init_pinecone()
         model_kwargs = {"device": "cpu"}
         encode_kwargs = {"normalize_embeddings": False}
@@ -42,9 +41,11 @@ class RagEngine:
             encode_kwargs=encode_kwargs,
         )
 
-        self.vectorstore = Pinecone.from_existing_index(
-            PINECONE_INDEX_NAME, embedding=embeddings
-        )
+        # self.vectorstore = Pinecone.from_existing_index(
+        #     PINECONE_INDEX_NAME, embedding=embeddings
+        # )
+
+        self.vectorstore = get_or_create_index(embeddings)
 
         llm = ChatOpenAI(
             temperature=TEMPERATURE,
@@ -56,7 +57,7 @@ class RagEngine:
         Context: {context}
         Question: {question}
         Answer: """
-        prompt = PromptTemplate.from_template(
+        prompt = PromptTemplate(
             template=template, input_variables=["context", "question"]
         )
 
@@ -70,17 +71,13 @@ class RagEngine:
 
     @traceable(metadata={"llm": "gpt-3.5-turbo"})
     def interpret_query(self, query):
-        docs = retriever(query)
-        result = self.qa_chain.invoke(
-            {
-                "question": query,
-            }
-        )
+        docs = self.retriever(query)
+        result = self.qa_chain.invoke({"question": query, "input_documents": docs})
 
-        answers = result["result"]
+        answer = result["result"] if "result" in result else result["answer"]
         sources = [doc.page_content for doc in result["source_documents"]]
 
-        return answers, sources
+        return answer, sources
 
     def run_interactive_session(self):
         print("Start talking with the bot (type 'quit' to exit)")

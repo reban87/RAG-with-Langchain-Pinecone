@@ -1,5 +1,5 @@
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from src.config.settings import EMBEDDING_MODEL, PINECONE_DIMENSION
+from src.config.settings import EMBEDDING_MODEL
 
 
 def get_embeddings():
