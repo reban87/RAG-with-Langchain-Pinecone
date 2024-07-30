@@ -5,6 +5,7 @@ from langchain_community.vectorstores import Pinecone
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
+from langsmith import traceable
 from src.config.settings import (
     OPENAI_API_KEY,
     PINECONE_API_KEY,
@@ -18,6 +19,16 @@ from src.storage.pinecne_utils import init_pinecone
 
 # @ INITIATE THE OPENAI CLIENT
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+@traceable(run_type="retriever")
+def retriever(query: str):
+    # This is where you'd implement your actual retrieval logic
+    # For now, we'll just return a mock result
+    results = [
+        "Healthcare data encompasses a wide range of information related to the health and well-being of individuals"
+    ]
+    return results
 
 
 class RagEngine:
@@ -57,6 +68,7 @@ class RagEngine:
             chain_type_kwargs={"prompt": prompt},
         )
 
+    @traceable(metadata={"llm": "gpt-3.5-turbo"})
     def interpret_query(self, query):
         docs = retriever(query)
         result = self.qa_chain.invoke(
@@ -69,6 +81,28 @@ class RagEngine:
         sources = [doc.page_content for doc in result["source_documents"]]
 
         return answers, sources
+
+    def run_interactive_session(self):
+        print("Start talking with the bot (type 'quit' to exit)")
+
+        while True:
+            query = input("User: ")
+            if query.lower() == "quit":
+                break
+            try:
+                answers, sources = self.interpret_query(query)
+                print(f"Answers: {answers}")
+                print(f"Sources: {sources}")
+
+                feedback = input("was this answer helpful? (y/n): ")
+                if feedback.lower() == "y":
+                    self.log_feedback(1)
+                else:
+                    self.log_feedback(0)
+            except Exception as e:
+                print(f"Error: {e}")
+
+            print("\n")
 
     def log_feedback(self, score):
         from langsmith import Client
