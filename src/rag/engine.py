@@ -35,7 +35,7 @@ class RagEngine:
         pc = init_pinecone()
         model_kwargs = {"device": "cpu"}
         encode_kwargs = {"normalize_embeddings": False}
-        embeddings = HuggingFaceEmbeddings(
+        self.embeddings = HuggingFaceEmbeddings(
             model_name=EMBEDDING_MODEL,
             model_kwargs=model_kwargs,
             encode_kwargs=encode_kwargs,
@@ -45,7 +45,7 @@ class RagEngine:
         #     PINECONE_INDEX_NAME, embedding=embeddings
         # )
 
-        self.vectorstore = get_or_create_index(embeddings)
+        self.vectorstore = get_or_create_index(self.embeddings)
 
         llm = ChatOpenAI(
             temperature=TEMPERATURE,
@@ -69,14 +69,30 @@ class RagEngine:
             chain_type_kwargs={"prompt": prompt},
         )
 
+    def process_documents(self, docs):
+        """Process and store new documents from the vector stores."""
+        try:
+            self.vectorstore.add_documents(docs)
+            print(f"Successfully added {len(docs)} documents to the vector store.")
+        except Exception as e:
+            print(f"Error adding documents to vector store: {e}")
+
+    def clear_vectorstore(self):
+        """Clear all documents from the vector store"""
+        self.vectorstore.delete(delete_all=True)
+        print("Vector store cleared.")
+
+    @traceable(run_type="retriever")
+    def retriever(self, query: str):
+        """Retrieve relevant documents from the vector store"""
+        return self.vectorstore.similarity_search(query, k=7)
+
     @traceable(metadata={"llm": "gpt-3.5-turbo"})
     def interpret_query(self, query):
         docs = self.retriever(query)
-        result = self.qa_chain.invoke({"question": query, "input_documents": docs})
-
+        result = self.qa_chain({"question": query, "input_documents": docs})
         answer = result["result"] if "result" in result else result["answer"]
         sources = [doc.page_content for doc in result["source_documents"]]
-
         return answer, sources
 
     def run_interactive_session(self):

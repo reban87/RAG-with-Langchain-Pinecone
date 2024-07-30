@@ -1,0 +1,41 @@
+.
+├── data
+│   └── tmp
+├── README.md
+├── requirements.txt
+├── src
+│   ├── api
+│   │   ├── __pycache__
+│   │   │   └── server.cpython-310.pyc
+│   │   └── server.py
+│   ├── config
+│   │   ├── __pycache__
+│   │   │   └── settings.cpython-310.pyc
+│   │   └── settings.py
+│   ├── data_processing
+│   │   └── document_loader.py
+│   ├── embeddings
+│   │   └── embeddings.py
+│   ├── __init__.py
+│   ├── main.py
+│   ├── monitoring
+│   │   ├── langsmith_monitor.py
+│   │   └── __pycache__
+│   │       └── langsmith_monitor.cpython-310.pyc
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   └── main.cpython-310.pyc
+│   ├── rag
+│   │   ├── engine.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── engine.cpython-310.pyc
+│   │       └── __init__.cpython-310.pyc
+│   └── storage
+│       ├── pinecone_utils.py
+│       ├── __pycache__
+│       │   └── pinecone_utils.cpython-310.pyc
+│       └── test.py
+└── structure.txt
+
+16 directories, 22 files
