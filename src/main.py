@@ -7,6 +7,16 @@ from src.data_processing.document_loader import (
 from src.config.settings import DATA_DIR
 
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+print(
+    f"OPENAI_API_KEY: {os.getenv('OPENAI_API_KEY')}"
+)  # Print first 5 characters of the key
+
+
 class HealthCareBot:
     def __init__(self):
         print("Initializing Health Care Bot...")

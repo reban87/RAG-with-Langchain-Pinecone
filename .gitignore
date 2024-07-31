@@ -8,3 +8,7 @@ env/
 # Ignore __pycache__ 
 
 __pycache__
+
+test.py
+
+.vscode

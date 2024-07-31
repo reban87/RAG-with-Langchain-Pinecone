@@ -9,3 +9,5 @@ fastapi
 langserve[all]
 langsmith
 pinecone-client
+unstructured
+unstructured[pdf]
