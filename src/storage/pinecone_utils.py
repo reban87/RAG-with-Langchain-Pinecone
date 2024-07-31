@@ -4,6 +4,7 @@ from pinecone import ServerlessSpec
 from src.config.settings import (
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
+    PINECONE_ENVIRONMENT,
 )
 
 
@@ -11,14 +12,24 @@ def init_pinecone():
     return PineconeClient(api_key=PINECONE_API_KEY)
 
 
-def get_or_create_index(embeddings):
+def get_or_create_index(
+    embeddings, index_name=PINECONE_INDEX_NAME, environment=PINECONE_ENVIRONMENT
+):
     pc = init_pinecone()
-    if PINECONE_INDEX_NAME not in pc.list_indexes().names():
-        print("I am here to create a new index now")
+    if index_name not in pc.list_indexes().names():
         pc.create_index(
-            PINECONE_INDEX_NAME,
+            name=index_name,
             dimension=len(embeddings.embed_query("test")),
             metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+            spec=ServerlessSpec(cloud="aws", region=environment),
         )
-    return Pinecone.from_existing_index(PINECONE_INDEX_NAME, embedding=embeddings)
+    return Pinecone.from_existing_index(index_name, embedding=embeddings)
+
+
+if __name__ == "__main__":
+    # This allows  to run this script directly for testing
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+
+    embeddings = HuggingFaceEmbeddings()
+    vectorstore = get_or_create_index(embeddings)
+    print(f"Vectorstore initialized with index: {PINECONE_INDEX_NAME}")
