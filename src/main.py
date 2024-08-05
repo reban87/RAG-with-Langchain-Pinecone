@@ -7,23 +7,15 @@ from src.data_processing.document_loader import (
 from src.config.settings import DATA_DIR
 
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-print(
-    f"OPENAI_API_KEY: {os.getenv('OPENAI_API_KEY')}"
-)  # Print first 5 characters of the key
-
-
 class HealthCareBot:
     def __init__(self):
         print("Initializing Health Care Bot...")
-        self.engine = RagEngine()
-        self.monitor = LangSmithMonitor()
-        self.documents_ingested = False
-        print("Health Care Bot Initialized")
+        try:
+            self.engine: RagEngine = RagEngine()
+            self.monitor: LangSmithMonitor = LangSmithMonitor()
+        except Exception as e:
+            print(f"Error initializing components: {e}")
+        self.documents_ingested: bool = False
 
     def run_interactive(self):
         if not self.documents_ingested:
@@ -31,7 +23,10 @@ class HealthCareBot:
             return
         print("Starting interactive session...")
         try:
-            self.engine.run_interactive_session()
+            result = self.engine.run_interactive_session()
+            if result == "menu":
+                print("Returning to main menu.")
+
         except Exception as e:
             print(f"An error occurred during the interactive session: {e}")
 
@@ -50,7 +45,7 @@ class HealthCareBot:
             self.engine.process_documents(docs)
             self.documents_ingested = True
             print(f"Documents ingested: {len(docs)} chunks processed")
-        except Exception as e:
+        except (FileNotFoundError, ValueError) as e:
             print(f"An error occurred while ingesting documents: {e}")
 
     def clear_data(self):
@@ -70,9 +65,11 @@ def main():
     bot = HealthCareBot()
     while True:
         print("\nMain Menu:")
-        choice = input(
-            "Choose an option: (1) Ingest documents, (2) Run interactive session, (3) Run monitoring, (4) Exit: "
-        )
+        choice = ""
+        while choice not in {"1", "2", "3", "4", "5"}:
+            choice = input(
+                "Choose an option: (1) Ingest documents, (2) Run interactive session, (3) Run monitoring, (4) Exit:, (5) Clear data: "
+            )
         if choice == "1":
             bot.ingest_documents()
         elif choice == "2":

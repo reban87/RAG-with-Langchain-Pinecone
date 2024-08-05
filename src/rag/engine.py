@@ -1,4 +1,5 @@
 # @ IMPORT THE NECESSARY LIBRARIES
+import uuid
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Pinecone
@@ -16,16 +17,6 @@ from src.storage.pinecone_utils import init_pinecone, get_or_create_index
 
 # @ INITIATE THE OPENAI CLIENT
 client = OpenAI(api_key=OPENAI_API_KEY)
-
-
-# @traceable(run_type="retriever")
-# def retriever(query: str):
-#     # This is where you'd implement your actual retrieval logic
-#     # For now, we'll just return a mock result
-#     results = [
-#         "Healthcare data encompasses a wide range of information related to the health and well-being of individuals"
-#     ]
-#     return results
 
 
 class RagEngine:
@@ -88,15 +79,19 @@ class RagEngine:
         return self.vectorstore.similarity_search(query, k=7)
 
     @traceable(metadata={"llm": "gpt-3.5-turbo"})
-    def interpret_query(self, question):
+    def interpret_query(self, question, user_id=None):
+        run_id = str(uuid.uuid4())
         print(f"Interpreting query: {question}")
         docs = self.retriever(question)
         print(f"Debug: Retrieved {len(docs)} documents")
         print(f"Debug: QA Chain input keys: {self.qa_chain.input_keys}")
-        result = self.qa_chain.invoke({"query": question, "input_documents": docs})
+        result = self.qa_chain.invoke(
+            {"query": question, "input_documents": docs},
+            config={"metadata": {"user_id": user_id} if user_id else {}},
+        )
         answer = result["result"] if "result" in result else result["answer"]
         sources = [doc.page_content for doc in result["source_documents"]]
-        return answer, sources
+        return answer, sources, run_id
 
     def run_interactive_session(self):
         print("Start talking with the bot (type 'quit' to exit)")
@@ -105,28 +100,41 @@ class RagEngine:
             question = input("User: ")
             if question.lower() == "quit":
                 break
+            elif question.lower() == "menu":
+                print("Returning to main menu.")
+                return "menu"
+
+            user_id = input("Enter your user ID (or press enter to skip): ")
             try:
-                answers, sources = self.interpret_query(question)
+                answers, sources, run_id = self.interpret_query(
+                    question, user_id if user_id else None
+                )
                 print(f"Answers: {answers}")
-                print(f"Sources: {sources}")
+                # print(f"Sources: {sources}")
+                print(f"\nRun ID: {run_id}")
 
                 feedback = input("was this answer helpful? (y/n): ")
                 if feedback.lower() == "y":
-                    self.log_feedback(1)
-                else:
-                    self.log_feedback(0)
+                    self.log_feedback(run_id, 1)
+                elif feedback.lower() == "n":
+                    self.log_feedback(run_id, 0)
+
+                print("You want to coninue?[y/n]")
+                if input() == "n":
+                    break
+                elif input == "y":
+                    continue
+                print("\n")
             except Exception as e:
                 print(f"Error: {e}")
 
             print("\n")
 
-    def log_feedback(self, score):
+    def log_feedback(self, run_id, score):
         from langsmith import Client
 
         ls_client = Client()
-        ls_client.create_feedback(
-            score=score,
-        )
+        ls_client.create_feedback(run_id=run_id, score=score, key="user_score")
 
     def get_qa_chain(self):
         return self.qa_chain

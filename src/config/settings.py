@@ -1,8 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-print(f"Current working directory: {os.getcwd()}")
-print(f".env file path: {os.path.join(os.getcwd(), '.env')}")
 
 load_dotenv()
 
@@ -28,7 +26,8 @@ DATA_DIR = os.path.join(Base_DIR, "data", "tmp")
 
 
 # @ LANGSMITH API KEY
-LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
 
 if __name__ == "__main__":
