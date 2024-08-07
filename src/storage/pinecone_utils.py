@@ -1,7 +1,7 @@
 from langchain_community.vectorstores import Pinecone
 from pinecone import Pinecone as PineconeClient
 from pinecone import ServerlessSpec
-from src.config.settings import (
+from config.settings import (
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
     PINECONE_ENVIRONMENT,

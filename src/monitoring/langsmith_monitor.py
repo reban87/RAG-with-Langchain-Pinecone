@@ -1,5 +1,5 @@
 from langsmith import Client
-from src.config.settings import LANGCHAIN_API_KEY
+from config.settings import LANGCHAIN_API_KEY
 from datetime import datetime
 
 

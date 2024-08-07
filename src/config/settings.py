@@ -10,6 +10,8 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME")
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT")
 
+CHROMA_DB_PATH=os.getenv("CHROMA_DB_PATH")
+
 
 # @ OPENAI SETTINGS
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -17,7 +19,8 @@ TEMPERATURE = os.getenv("TEMPERATURE")
 MODEL_NAME = os.getenv("MODEL_NAME")
 
 # @ MODEL SETTINGS
-EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
+# EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 # @ DATA SETTINGS

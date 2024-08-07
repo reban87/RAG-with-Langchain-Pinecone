@@ -1,10 +1,10 @@
-from src.rag.engine import RagEngine
-from src.monitoring.langsmith_monitor import LangSmithMonitor
-from src.data_processing.document_loader import (
+from rag.engine import RagEngine
+from monitoring.langsmith_monitor import LangSmithMonitor
+from data_processing.document_loader import (
     load_and_split_documents,
     load_and_split_multiple_file_types,
 )
-from src.config.settings import DATA_DIR
+from config.settings import DATA_DIR
 
 
 class HealthCareBot:

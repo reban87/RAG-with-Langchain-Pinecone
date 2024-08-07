@@ -1,7 +1,7 @@
 # @ IMPORTING NECESSARY LIBRARIES
 from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from src.config.settings import DATA_DIR
+from config.settings import DATA_DIR
 import logging
 
 
@@ -34,6 +34,22 @@ def load_and_split_documents(
         logger.error(f"Error in load_and_split_documents: {e}")
         raise
 
+def load_documents(
+    file_pattern="**/*.pdf"
+):
+    try:
+        # Load documents
+        logger.info(f"Loading documents from {DATA_DIR}")
+        loader = DirectoryLoader(DATA_DIR, glob=file_pattern , show_progress=True)
+        documents = loader.load()
+        logger.info(f"Loaded {len(documents)} documents")
+
+        return documents
+
+    except Exception as e:
+        logger.error(f"Error in load_and_split_documents: {e}")
+        raise
+
 
 def load_and_split_multiple_file_types():
     pdf_docs = load_and_split_documents(file_pattern="**/*.pdf")
@@ -42,7 +58,7 @@ def load_and_split_multiple_file_types():
     return pdf_docs + txt_docs  # Combine all document chunks
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     # This allows you to run this script directly for testing
-    docs = load_and_split_documents()
-    print(f"Total chunks: {len(docs)}")
+    # docs = load_and_split_documents()
+    # print(f"Total chunks: {len(docs)}")

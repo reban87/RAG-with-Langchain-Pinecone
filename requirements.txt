@@ -11,3 +11,5 @@ langsmith
 pinecone-client
 unstructured
 unstructured[pdf]
+langchain_community
+streamlit

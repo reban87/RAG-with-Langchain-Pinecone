@@ -14,21 +14,24 @@ from config.settings import (
     MODEL_NAME,
 )
 from storage.pinecone_utils import init_pinecone, get_or_create_index
+from langchain.embeddings.openai import OpenAIEmbeddings
+ 
 
 # @ INITIATE THE OPENAI CLIENT
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-class RagEngine:
+class RecruiterRagEngine:
     def __init__(self):
         pc = init_pinecone()
-        model_kwargs = {"device": "cpu"}
-        encode_kwargs = {"normalize_embeddings": False}
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
-            model_kwargs=model_kwargs,
-            encode_kwargs=encode_kwargs,
-        )
+        # model_kwargs = {"device": "cpu"}
+        # encode_kwargs = {"normalize_embeddings": False}
+        # self.embeddings = HuggingFaceEmbeddings(
+        #     model_name=EMBEDDING_MODEL,
+        #     model_kwargs=model_kwargs,
+        #     encode_kwargs=encode_kwargs,
+        # )
+        self.embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
         # self.vectorstore = Pinecone.from_existing_index(
         #     PINECONE_INDEX_NAME, embedding=embeddings
@@ -43,7 +46,7 @@ class RagEngine:
             openai_api_key=OPENAI_API_KEY,
         )
         print(f"open_ai_key: {OPENAI_API_KEY}")
-        template = """You are a Health Care Insurance Data Intrepretor bot. Use the following pieces of context to interpret the user's query. If the information can not be found in the context, just say "I don't know.
+        template = """You are a Technical Recruiter who is an expert in filtering candidates according to Job description. Use the following pieces of context to interpret the user's query. If the information can not be found in the context, just say "I don't know.
         Context: {context}
         Question: {question}
         Answer: """
@@ -54,7 +57,7 @@ class RagEngine:
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 7}),
+            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 10}),
             return_source_documents=True,
             chain_type_kwargs={"prompt": prompt},
         )
@@ -73,62 +76,25 @@ class RagEngine:
         self.vectorstore.delete(delete_all=True)
         print("Vector store cleared.")
 
-    @traceable(run_type="retriever")
-    def retriever(self, query: str):
-        """Retrieve relevant documents from the vector store"""
-        return self.vectorstore.similarity_search(query, k=7)
+    # @traceable(run_type="retriever")
+    # def retriever(self, query: str):
+    #     """Retrieve relevant documents from the vector store"""
+    #     return self.vectorstore.similarity_search(query, k=30)
 
     @traceable(metadata={"llm": "gpt-3.5-turbo"})
     def interpret_query(self, question, user_id=None):
         run_id = str(uuid.uuid4())
         print(f"Interpreting query: {question}")
-        docs = self.retriever(question)
-        print(f"Debug: Retrieved {len(docs)} documents")
+        # docs = self.retriever(question)
+        # print(f"Debug: Retrieved {len(docs)} documents")
         print(f"Debug: QA Chain input keys: {self.qa_chain.input_keys}")
         result = self.qa_chain.invoke(
-            {"query": question, "input_documents": docs},
+             {"query": question},
             config={"metadata": {"user_id": user_id} if user_id else {}},
         )
         answer = result["result"] if "result" in result else result["answer"]
         sources = [doc.page_content for doc in result["source_documents"]]
         return answer, sources, run_id
-
-    def run_interactive_session(self):
-        print("Start talking with the bot (type 'quit' to exit)")
-
-        while True:
-            question = input("User: ")
-            if question.lower() == "quit":
-                break
-            elif question.lower() == "menu":
-                print("Returning to main menu.")
-                return "menu"
-
-            user_id = input("Enter your user ID (or press enter to skip): ")
-            try:
-                answers, sources, run_id = self.interpret_query(
-                    question, user_id if user_id else None
-                )
-                print(f"Answers: {answers}")
-                # print(f"Sources: {sources}")
-                print(f"\nRun ID: {run_id}")
-
-                feedback = input("was this answer helpful? (y/n): ")
-                if feedback.lower() == "y":
-                    self.log_feedback(run_id, 1)
-                elif feedback.lower() == "n":
-                    self.log_feedback(run_id, 0)
-
-                print("You want to coninue?[y/n]")
-                if input() == "n":
-                    break
-                elif input == "y":
-                    continue
-                print("\n")
-            except Exception as e:
-                print(f"Error: {e}")
-
-            print("\n")
 
     def log_feedback(self, run_id, score):
         from langsmith import Client
