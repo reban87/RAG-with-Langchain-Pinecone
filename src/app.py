@@ -40,7 +40,7 @@ def main():
     bot = RecruimentBot()
 
     with st.sidebar:
-        "Techkraft"
+        # "Techkraft"
         st.button("Import Docs", type="primary", on_click=bot.ingest_documents)
         st.button("Clear Data",on_click=bot.clear_data)
         
@@ -48,6 +48,15 @@ def main():
 
     st.title("💬 Lets Recruit!!")
     st.caption("🚀 Helps you find people according to the job description")
+    st.markdown(
+        r"""
+        <style>
+        .stDeployButton {
+                visibility: hidden;
+            }
+        </style>
+        """, unsafe_allow_html=True
+    )
 
     if "messages" not in st.session_state:
         st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
@@ -56,8 +65,8 @@ def main():
         st.chat_message(msg["role"]).write(msg["content"])
 
     if prompt := st.chat_input():
-        st.session_state.messages.append({"role": "user", "content": prompt})
         st.chat_message("user").write(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
         response= bot.query_llm(prompt)
         msg = response[0]
         st.session_state.messages.append({"role": "assistant", "content": msg})

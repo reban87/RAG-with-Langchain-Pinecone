@@ -59,25 +59,32 @@ class RecruiterRagEngine:
             Relevant Resume Information:
             {context}
 
-            Please analyze each resume, compare it with the query, and provide a sorted list of candidates from most suitable to least suitable. For each candidate, provide a brief explanation of why they are ranked in that position.
+            Please analyze each resume, compare it with the query, and provide a sorted list of candidates from most suitable to least suitable.
+            The Skills mentioned in the question should be an extact match if it is not listed as optional or nice to have.Skills can be in groups divided by commas in which at least one has to be a exact match.
+            The preferred skills and requirements has to atleast match 70 percent do not list that candidate
+            For each candidate, provide a brief explanation of why they are ranked in that position in accordance with the provided question and the compatibility match percentage in float.
 
             Your response should be in the following format:
-            1. [Candidate Name]: [Brief explanation]
-            2. [Candidate Name]: [Brief explanation]
+            1. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
+            2. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
             ...
-
+            Do not give details that are not in their resumes.if you find less candidates than wanted just give details of the matched candidates
             Sorting results:
             """
 
         specific_query_template = """
-            You are an AI assistant for a talent acquisition team. Your task is to answer specific questions about candidates or skills based on their resumes.
-
+            You are an AI assistant for a talent acquisition team. Your task is to answer specific questions about candidates or skills based on their resumes.Do not give details that are not in their own resumes.
+            The Skills mentioned in the question should be an extact match if it is not listed as optional or nice to have.Skills can be in groups divided by commas in which at least one has to be a exact match.
+            
             Question: {question}
 
             Relevant Resume Information:
             {context}
 
-            Please provide a detailed and professional response, suitable for use in HR decision-making. If the query is about a specific skill, focus on candidates who possess that skill. If it's about a particular candidate, provide detailed information about that candidate's qualifications and experiences.
+            Please provide a detailed and professional response, suitable for use in HR decision-making. 
+            If the query is about a specific skill, focus on candidates who possess that skill and mention where, when and in which project they have used it. 
+            If it's about a particular candidate, provide detailed information about that candidate's qualifications and experiences.
+            Do not include anything that are not in their own resume.
 
             Your response should be structured and easy to read. Use bullet points or numbering when appropriate.
 
@@ -96,7 +103,7 @@ class RecruiterRagEngine:
         self.sort_candidates_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 10}),
+            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 13}),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=sort_candidates_template,
@@ -109,7 +116,7 @@ class RecruiterRagEngine:
         self.specific_query_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 10}),
+            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 13}),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=specific_query_template,
@@ -140,6 +147,11 @@ class RecruiterRagEngine:
             # classify the question first
             query_type = self.query_classifier_chain.invoke(question)
             print(f"query_type:{query_type}")
+            # retriever = self.vectorstore.as_retriever(search_kwargs={"k": 10})
+            results = self.vectorstore.similarity_search(question,k=10)
+            print(f"Query: {question}")
+            print(f"Results: {results}")
+            print(f"Result count: {len(results)}")
 
             if query_type == "Candidate Sorting":
                 result = self.sort_candidates_chain.invoke(question)

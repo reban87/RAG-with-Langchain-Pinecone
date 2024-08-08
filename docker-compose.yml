@@ -1,0 +1,9 @@
+version: '3'
+services:
+  recruit-bot-app:
+    image: recruit-bot:latest
+    command: streamlit run src/app.py --server.port 8080
+    volumes:
+      - .:/app
+    ports:
+      - 8080:8080

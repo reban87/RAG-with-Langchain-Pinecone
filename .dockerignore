@@ -1,0 +1,4 @@
+docker-compose.y*
+Dockerfile
+ragenv
+.git*
