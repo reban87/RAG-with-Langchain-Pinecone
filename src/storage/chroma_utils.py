@@ -1,26 +1,37 @@
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import OpenAIEmbeddings 
 from config.settings import (
-    CHROMA_DB_PATH,  # Replace this with your Chroma DB path or configuration
+    CHROMA_DB_PATH,
+    OPENAI_API_KEY
 )
+import os # Importing os module for operating system functionalities
+import shutil # Importing shutil module for high-level file operations
+
+# def init_chroma():
+#     return Chroma(persist_directory=CHROMA_DB_PATH)
 
 
-def init_chroma():
-    return Chroma(persist_directory=CHROMA_DB_PATH)
+def save_to_chroma(chunks):
+    if os.path.exists(CHROMA_DB_PATH):
+        shutil.rmtree(CHROMA_DB_PATH)
+
+  # Create a new Chroma database from the documents using OpenAI embeddings
+    db = Chroma.from_documents(
+        chunks,
+        OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY),
+        persist_directory=CHROMA_DB_PATH
+    )
+
+    # Persist the database to disk
+    db.persist()
+    print(f"Saved {len(chunks)} chunks to {CHROMA_DB_PATH}.")
 
 
-def get_or_create_index(embeddings, index_name="default_index"):
-    chroma = init_chroma()
-    
-    # Check if the index exists, and if not, create it
-    if index_name not in chroma.list_indexes():
-        chroma.create_index(name=index_name, dimension=len(embeddings.embed_query("test")))
+def init_chroma_db(embedding_function):
+    return Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_function)
 
-    return chroma
-
-
-if __name__ == "__main__":
-    # This allows running this script directly for testing
-    embeddings = HuggingFaceEmbeddings()
-    vectorstore = get_or_create_index(embeddings)
-    print(f"Vectorstore initialized with index: default_index")
+# if __name__ == "__main__":
+#     # This allows running this script directly for testing
+#     embeddings = HuggingFaceEmbeddings()
+#     vectorstore = get_or_create_index(embeddings)
+#     print(f"Vectorstore initialized with index: default_index")
