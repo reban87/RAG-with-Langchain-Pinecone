@@ -40,3 +40,8 @@ Create a `.env` file in the project root and add the following:
 ```python3 src/main.py``` if it doesn't work then ```python3 -m src.main```
 3. API Mode:
 ```python3 src/api/server.py``` if it doesn't work then ```python3 -m src.api.server```
+
+### UI Mode
+1. Place your PDF documents in the `data/tmp` folder.
+2. Run the UI application:
+```streamlit src/app.py``` 
