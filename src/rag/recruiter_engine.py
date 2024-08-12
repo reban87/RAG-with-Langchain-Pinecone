@@ -78,12 +78,13 @@ class RecruiterRagEngine:
             {{context}}
 
             Please analyze each resume, compare it with the questions,take the questions as a checklist and get true or false response, and provide a sorted list of candidates from most suitable to least suitable.
+            Only list the candidate if more than 70 percent of the checklist questions is matched or is true.if no candidates are found return candidates with more than 50 percent match and less than 70 percent match.
             
-            For each candidate, provide a brief explanation of why they are ranked in that position in accordance with the provided question and the compatibility match percentage in float.
+            For each candidate, provide a brief explanation of why they are ranked in that position in accordance with the provided questions in the checklist and the compatibility match percentage in float.
 
             Your response should be in the following format:
-            1. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
-            2. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
+            1. [Candidate Name] [Years of experience]: [Explain by listing the questions provided and its answer according to the candidates resume]
+            2. [Candidate Name] [Years of experience]: [Explain by listing the questions provided and its answer according to the candidates resume]
             ...
             Do not give details that are not in their resumes.if you find less candidates than wanted just give details of the matched candidates.if no candidates matches the matching criterias return 'No candidates found'
             Sorting results:
