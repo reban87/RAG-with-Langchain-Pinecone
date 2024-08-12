@@ -17,11 +17,12 @@ from config.settings import (
 )
 from storage.pinecone_utils import init_pinecone, get_or_create_index
 from langchain.embeddings.openai import OpenAIEmbeddings
+from datetime import date
 
 
 # @ INITIATE THE OPENAI CLIENT
 client = OpenAI(api_key=OPENAI_API_KEY)
-
+today = date.today()
 
 class RecruiterRagEngine:
     def __init__(self):
@@ -41,8 +42,10 @@ class RecruiterRagEngine:
         query_classifier_template = """
             You are an AI assistant for a talent acquisition team. Your task is to classify the given query into one of two categories:
             1. Candidate Sorting: Queries that ask to rank, sort, or compare multiple candidates based on certain criteria.
-            2. Specific Query: Questions about specific skills, experiences, or individual candidates.
-
+            2. Specific Query: Questions about specific experiences, or individual candidates.
+            
+            if a question has a job description classify it as  candidate sorting
+            
             Question: {question}
 
             Please respond with either "Candidate Sorting" or "Specific Query".
@@ -50,36 +53,51 @@ class RecruiterRagEngine:
             query_type:
 
             """
+        query_additional_questions_template = """
+            You are an Ai assistant for a talent acquisition team.Your task is to generate questions according to the query provided so that all the important criterias are covered while filtering resumes.
+            Start the questions with 'Does the candidate have'
 
-        sort_candidates_template = """
+
+            query: {question}
+
+            Your response should be in the following format:
+            1.[Question1]
+            2.[Question2]
+            ...
+
+        
+        """
+
+        sort_candidates_template = f"""
             You are an AI assistant for a talent acquisition team. Your task is to sort and rank candidates based on their resumes and the given query.
+            Todays date is {today}.
 
-            Question: {question}
+            Questions: {{question}}
 
             Relevant Resume Information:
-            {context}
+            {{context}}
 
-            Please analyze each resume, compare it with the query, and provide a sorted list of candidates from most suitable to least suitable.
-            The Skills mentioned in the question should be an extact match if it is not listed as optional or nice to have.Skills can be in groups divided by commas in which at least one has to be a exact match.
-            The preferred skills and requirements has to atleast match 70 percent do not list that candidate
+            Please analyze each resume, compare it with the questions,take the questions as a checklist and get true or false response, and provide a sorted list of candidates from most suitable to least suitable.
+            
             For each candidate, provide a brief explanation of why they are ranked in that position in accordance with the provided question and the compatibility match percentage in float.
 
             Your response should be in the following format:
             1. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
             2. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
             ...
-            Do not give details that are not in their resumes.if you find less candidates than wanted just give details of the matched candidates
+            Do not give details that are not in their resumes.if you find less candidates than wanted just give details of the matched candidates.if no candidates matches the matching criterias return 'No candidates found'
             Sorting results:
             """
 
-        specific_query_template = """
+        specific_query_template = f"""
             You are an AI assistant for a talent acquisition team. Your task is to answer specific questions about candidates or skills based on their resumes.Do not give details that are not in their own resumes.
             The Skills mentioned in the question should be an extact match if it is not listed as optional or nice to have.Skills can be in groups divided by commas in which at least one has to be a exact match.
-            
-            Question: {question}
+            Todays date is {today}.
+
+            Question: {{question}}
 
             Relevant Resume Information:
-            {context}
+            {{context}}
 
             Please provide a detailed and professional response, suitable for use in HR decision-making. 
             If the query is about a specific skill, focus on candidates who possess that skill and mention where, when and in which project they have used it. 
@@ -100,10 +118,21 @@ class RecruiterRagEngine:
             verbose=True,
         )
 
+        self.query_addtional_questions_chain = LLMChain(
+            llm=llm,
+            prompt=PromptTemplate(
+                # template=query_classifier_template,
+                template=query_additional_questions_template,
+                input_variables=["question"],
+            ),
+            verbose=True,
+        )
+
         self.sort_candidates_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 13}),
+            retriever=self.vectorstore.as_retriever( search_type="similarity_score_threshold",
+                search_kwargs={'score_threshold': 0.8,"k": 13}),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=sort_candidates_template,
@@ -116,7 +145,8 @@ class RecruiterRagEngine:
         self.specific_query_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 13}),
+            retriever=self.vectorstore.as_retriever(search_type="similarity_score_threshold",
+                search_kwargs={'score_threshold': 0.8,"k": 5}),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=specific_query_template,
@@ -145,21 +175,21 @@ class RecruiterRagEngine:
         print(f"Interpreting query: {question}")
         if question:
             # classify the question first
-            query_type = self.query_classifier_chain.invoke(question)
+            query_type = self.query_classifier_chain.invoke(question)['text']
             print(f"query_type:{query_type}")
             # retriever = self.vectorstore.as_retriever(search_kwargs={"k": 10})
-            results = self.vectorstore.similarity_search(question,k=10)
-            print(f"Query: {question}")
-            print(f"Results: {results}")
-            print(f"Result count: {len(results)}")
-
+            # results = self.vectorstore.similarity_search(question,k=10)
+            # print(f"Query: {question}")
+            # print(f"Results: {results}")
+            # print(f"Result count: {len(results)}")
+            addtional_questions = self.query_addtional_questions_chain.invoke(question)
             if query_type == "Candidate Sorting":
-                result = self.sort_candidates_chain.invoke(question)
+                result = self.sort_candidates_chain.invoke(addtional_questions['text'])
             elif query_type == "Specific Query":
-                result = self.specific_query_chain.invoke(question)
+                result = self.specific_query_chain.invoke(addtional_questions['text'])
             else:
                 # Fallback to specific query if classification fails
-                result = self.specific_query_chain(question)
+                result = self.specific_query_chain(addtional_questions['text'])
 
             answer = (
                 result
@@ -185,3 +215,4 @@ class RecruiterRagEngine:
 
     def get_qa_chain(self):
         return self.qa_chain
+
