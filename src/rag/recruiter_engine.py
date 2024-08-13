@@ -6,6 +6,7 @@ from langchain_community.vectorstores import Pinecone
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
+from langchain.load import loads
 
 # from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
@@ -24,6 +25,7 @@ from datetime import date
 client = OpenAI(api_key=OPENAI_API_KEY)
 today = date.today()
 
+
 class RecruiterRagEngine:
     def __init__(self):
         pc = init_pinecone()
@@ -39,6 +41,20 @@ class RecruiterRagEngine:
         )
         print(f"open_ai_key: {OPENAI_API_KEY}")
 
+        resume_schema = {
+            "properties": {
+                "name": {"type": "string"},
+                "email": {"type": "string"},
+                "phone": {"type": "string"},
+                "location": {"type": "string"},
+                "summary": {"type": "string"},
+                "skills": [{"type": "str"}],
+                "total_years_of_experience": {"type": "string"},
+                "education": {"type": "string"},
+                "job_description": {"type": "string"},
+            }
+        }
+
         query_classifier_template = """
             You are an AI assistant for a talent acquisition team. Your task is to classify the given query into one of two categories:
             1. Candidate Sorting: Queries that ask to rank, sort, or compare multiple candidates based on certain criteria.
@@ -53,20 +69,35 @@ class RecruiterRagEngine:
             query_type:
 
             """
-        query_additional_questions_template = """
-            You are an Ai assistant for a talent acquisition team.Your task is to generate questions according to the query provided so that all the important criterias are covered while filtering resumes.
-            Start the questions with 'Does the candidate have'
 
+        # query_additional_questions_template = """ Generate 3 different versions of the following query, each focusing on a different aspect or interpretation:
 
+        #         Original query: {question}
+
+        #         1.
+        #         2.
+        #         3.
+        #         """
+
+        query_additional_questions_template = """You are an Ai assistant for a talent acquisition team.Your task is to generate questions according to the query provided so that all the important criterias are covered while filtering resumes.
+            Start the questions with 'Find candidates with'
+ 
+ 
             query: {question}
 
+            Here's the example for your reference:
+            query: Experience in machine learning and cloud computing
+
+            response:
+
+            Find candidates with a strong background in machine learning algorithms and their implementation.
+            Find candidates with hands-on experience in cloud platforms like AWS, Google Cloud, or Azure for deploying ML models.
+ 
             Your response should be in the following format:
             1.[Question1]
             2.[Question2]
             ...
-
-        
-        """
+  """
 
         sort_candidates_template = f"""
             You are an AI assistant for a talent acquisition team. Your task is to sort and rank candidates based on their resumes and the given query.
@@ -131,8 +162,10 @@ class RecruiterRagEngine:
         self.sort_candidates_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever( search_type="similarity_score_threshold",
-                search_kwargs={'score_threshold': 0.8,"k": 13}),
+            retriever=self.vectorstore.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"score_threshold": 0.8, "k": 3},
+            ),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=sort_candidates_template,
@@ -145,8 +178,10 @@ class RecruiterRagEngine:
         self.specific_query_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_type="similarity_score_threshold",
-                search_kwargs={'score_threshold': 0.8,"k": 5}),
+            retriever=self.vectorstore.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"score_threshold": 0.8, "k": 5},
+            ),
             chain_type_kwargs={
                 "prompt": PromptTemplate(
                     template=specific_query_template,
@@ -164,6 +199,22 @@ class RecruiterRagEngine:
         except Exception as e:
             print(f"Error adding documents to vector store: {e}")
 
+    def vector_retrieval(self, query, query_type):
+        if query_type == "Candidate Sorting":
+            results = self.sort_candidates_chain.retriever.get_relevant_documents(query)
+        elif query_type == "Specific Query":
+            results = self.specific_query_chain.retriever.get_relevant_documents(query)
+        else:
+            results = self.specific_query_chain.retriever.get_relevant_documents(query)
+
+        return {
+            doc.metadata.get("id", f"doc_{i}"): {
+                "score": getattr(doc, "score", 0.0),
+                "content": doc.page_content,
+            }
+            for i, doc in enumerate(results)
+        }
+
     def clear_vectorstore(self):
         """Clear all documents from the vector store"""
         self.vectorstore.delete(delete_all=True)
@@ -175,21 +226,54 @@ class RecruiterRagEngine:
         print(f"Interpreting query: {question}")
         if question:
             # classify the question first
-            query_type = self.query_classifier_chain.invoke(question)['text']
+            query_type = self.query_classifier_chain.invoke(question)["text"]
             print(f"query_type:{query_type}")
             # retriever = self.vectorstore.as_retriever(search_kwargs={"k": 10})
             # results = self.vectorstore.similarity_search(question,k=10)
             # print(f"Query: {question}")
             # print(f"Results: {results}")
             # print(f"Result count: {len(results)}")
-            addtional_questions = self.query_addtional_questions_chain.invoke(question)
+            additional_questions = self.query_addtional_questions_chain.invoke(question)
+            all_questions = [question] + [
+                q for q in additional_questions["text"].splitlines() if q.strip()
+            ]  # Original + 3 additional questions
+
+            # @ Retrieve the documents based upon the query
+            search_results_dict = {}
+            for i, q in enumerate(all_questions):
+                search_results_dict[f"query_{i}"] = self.vector_retrieval(q, query_type)
+
+            # Apply Reciprocal Rank Fusion to rerank the documents
+            reranked_results = self.reciprocal_rank_fusion(search_results_dict)
+            print(f"rerannked_results: {reranked_results}")
+
+            top_docs = list(reranked_results)[:5]
+
+            # Generate the final answer based on reranked results
+            # context = "\n".join([doc.page_content for doc in search_results])
+            context = "\n".join(
+                [
+                    search_results_dict[query][doc_id]["content"]
+                    for query in search_results_dict
+                    for doc_id in top_docs
+                    if doc_id in search_results_dict[query]
+                ]
+            )
+
+            # @ Generate the final answer based on reranked results
             if query_type == "Candidate Sorting":
-                result = self.sort_candidates_chain.invoke(addtional_questions['text'])
+                result = self.sort_candidates_chain.invoke(
+                    {"query": question, "context": context}
+                )
             elif query_type == "Specific Query":
-                result = self.specific_query_chain.invoke(addtional_questions['text'])
+                result = self.specific_query_chain.invoke(
+                    {"query": question, "context": context}
+                )
             else:
                 # Fallback to specific query if classification fails
-                result = self.specific_query_chain(addtional_questions['text'])
+                result = self.specific_query_chain.invoke(
+                    {"query": question, "context": context}
+                )
 
             answer = (
                 result
@@ -206,6 +290,7 @@ class RecruiterRagEngine:
 
         else:
             print("No question provided")
+            return None, None
 
     def log_feedback(self, run_id, score):
         from langsmith import Client
@@ -216,3 +301,26 @@ class RecruiterRagEngine:
     def get_qa_chain(self):
         return self.qa_chain
 
+    def reciprocal_rank_fusion(self, search_results_dict: dict, k=60):
+        fused_scores = {}
+        print("Initial individual search result ranks:")
+        for query, doc_scores in search_results_dict.items():
+            print(f"For query '{query}': {doc_scores}")
+
+        for query, doc_scores in search_results_dict.items():
+            for rank, (doc, details) in enumerate(
+                sorted(doc_scores.items(), key=lambda x: x[1]["score"], reverse=True)
+            ):
+                if doc not in fused_scores:
+                    fused_scores[doc] = 0
+                previous_score = fused_scores[doc]
+                fused_scores[doc] += 1 / (rank + k)
+                print(
+                    f"Updating score for {doc} from {previous_score} to {fused_scores[doc]} based on rank {rank} in query '{query}'"
+                )
+
+        reranked_results = dict(
+            sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+        )
+        print("Final reranked results:", reranked_results)
+        return reranked_results
