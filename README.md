@@ -1,4 +1,4 @@
-# Health Care Insurance Data Interpreter
+# Recruitment Bot
 
 ## Description
 This project is a Retrieval-Augmented Generation (RAG) system designed to interpret health care insurance data. It uses advanced natural language processing techniques to answer queries based on ingested documents, providing accurate and context-aware responses to health insurance-related questions.
