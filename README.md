@@ -1,7 +1,7 @@
 # Recruitment Bot
 
 ## Description
-This project is a Retrieval-Augmented Generation (RAG) system designed to interpret health care insurance data. It uses advanced natural language processing techniques to answer queries based on ingested documents, providing accurate and context-aware responses to health insurance-related questions.
+This project is a Retrieval-Augmented Generation (RAG) system designed for recruitment. It uses advanced natural language processing techniques to answer queries based on ingested documents, providing accurate and context-aware responses based upon resumes.
 
 ## Features
 - Document ingestion and processing (PDF support)
