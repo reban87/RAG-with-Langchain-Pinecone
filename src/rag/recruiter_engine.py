@@ -108,17 +108,31 @@ class RecruiterRagEngine:
             Relevant Resume Information:
             {{context}}
 
-            Please analyze each resume, compare it with the questions,take the questions as a checklist and get true or false response, and provide a sorted list of candidates from most suitable to least suitable.
-            
-            For each candidate, provide a brief explanation of why they are ranked in that position in accordance with the provided question and the compatibility match percentage in float.
+            Task:
+            Please analyze each resume, compare it with the questions, and treat the questions as a checklist. For each candidate, provide a true or false response for each question, and then generate a compatibility percentage. Afterward, sort and rank the candidates based on their compatibility percentage.
 
-            Your response should be in the following format:
-            1. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
-            2. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
-            ...
-            Do not give details that are not in their resumes.if you find less candidates than wanted just give details of the matched candidates.if no candidates matches the matching criterias return 'No candidates found'
-            Sorting results:
-            """
+            Output:
+
+                - Ensure each candidate appears only once in the final list.
+                - Provide a sorted list of candidates from most suitable to least suitable.
+                - If two candidates have the same compatibility percentage, rank them based on the relevance and strength of their experience.
+                - Ensure no duplicate candidates are listed in the final output.
+               
+            Format:
+
+                1. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
+
+
+                2. [Candidate Name] [Compatibility Percentage]: [Brief explanation]
+                ...     
+
+                - If fewer candidates match than expected, list only those who match.
+                - If no candidates meet the criteria, return 'No candidates found.
+                
+            Ensure no duplicate candidates are listed in the final output.
+
+            AI Response:
+                """
 
         specific_query_template = f"""
             You are an AI assistant for a talent acquisition team. Your task is to answer specific questions about candidates or skills based on their resumes.Do not give details that are not in their own resumes.
